@@ -64,6 +64,13 @@ fn class_method_definition(input: Input) -> IResult<ClassMethod> {
 }
 
 fn expression(input: Input) -> IResult<Expression> {
+    alt((method_call, expression_but_not_method_call))(input)
+}
+
+// Without this, method calls would become right-associative, e.g. `f x y` would
+// be parsed as `f (x y)` since the first argument would greedily parse itself
+// as a method call as well.
+fn expression_but_not_method_call(input: Input) -> IResult<Expression> {
     let unit_literal = value(
         Expression::Literal(Value::Unit),
         tuple((char('('), ws, char(')'))),
@@ -87,7 +94,6 @@ fn expression(input: Input) -> IResult<Expression> {
         i32_literal.map(Value::I32).map(Expression::Literal),
         let_in,
         if_then_else,
-        method_call,
         local_variable,
     ))(input)
 }
@@ -145,8 +151,8 @@ fn if_then_else(input: Input) -> IResult<Expression> {
 fn method_call(input: Input) -> IResult<Expression> {
     tuple((
         identifier,
-        preceded(ws, expression.map(Box::new)),
-        many0(preceded(ws, expression)),
+        preceded(ws, expression_but_not_method_call.map(Box::new)),
+        many0(preceded(ws, expression_but_not_method_call)),
     ))
     .map(|(name, this, arguments)| Expression::MethodCall {
         name,
