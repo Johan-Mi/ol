@@ -1,6 +1,6 @@
 use crate::{
-    expression::Expression, method::Method, object::Object, typ::Type,
-    value::Value,
+    expression::Expression, method::Method, object::Object, program::Program,
+    typ::Type, value::Value,
 };
 use std::{collections::HashMap, rc::Rc};
 
@@ -50,6 +50,28 @@ impl VM {
             local_variables: Vec::new(),
             class_id_counter: 0,
         }
+    }
+
+    pub fn load_program(
+        &mut self,
+        program: Program,
+    ) -> HashMap<String, ClassID> {
+        let mut class_ids = HashMap::new();
+        for class in program.classes {
+            let class_id = self.new_class_id();
+            class_ids.insert(class.name, class_id);
+            for method in class.methods {
+                let body = method.body.resolve();
+                self.methods
+                    .entry(Type::Object(class_id))
+                    .or_insert_with(Default::default)
+                    .insert(
+                        method.name.clone(),
+                        Rc::new(Method::Custom { body }),
+                    );
+            }
+        }
+        class_ids
     }
 
     pub fn run(&mut self, main_type: ClassID) {
