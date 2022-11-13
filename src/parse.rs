@@ -69,9 +69,6 @@ fn expression(input: Input) -> IResult<Expression> {
         tuple((char('('), ws, char(')'))),
     );
 
-    let parenthesized =
-        delimited(pair(char('('), ws), expression, pair(ws, char('(')));
-
     let r#true = value(Expression::Literal(Value::Bool(true)), keyword("true"));
     let r#false =
         value(Expression::Literal(Value::Bool(false)), keyword("false"));
@@ -82,7 +79,7 @@ fn expression(input: Input) -> IResult<Expression> {
 
     alt((
         unit_literal,
-        parenthesized,
+        parenthesized_expression,
         r#true,
         r#false,
         block,
@@ -93,6 +90,10 @@ fn expression(input: Input) -> IResult<Expression> {
         method_call,
         local_variable,
     ))(input)
+}
+
+fn parenthesized_expression(input: Input) -> IResult<Expression> {
+    delimited(pair(char('('), ws), expression, pair(ws, char(')')))(input)
 }
 
 fn block(input: Input) -> IResult<Expression> {
@@ -126,7 +127,10 @@ fn let_in(input: Input) -> IResult<Expression> {
 
 fn if_then_else(input: Input) -> IResult<Expression> {
     tuple((
-        preceded(pair(keyword("if"), ws), expression.map(Box::new)),
+        preceded(
+            pair(keyword("if"), ws),
+            parenthesized_expression.map(Box::new),
+        ),
         preceded(ws, block.map(Box::new)),
         preceded(tuple((ws, keyword("else"), ws)), block.map(Box::new)),
     ))
