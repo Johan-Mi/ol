@@ -1,6 +1,6 @@
 use crate::{
     expression::Expression, method::Method, object::Object, program::Program,
-    typ::Type, value::Value,
+    resolve::Resolver, typ::Type, value::Value,
 };
 use std::{collections::HashMap, rc::Rc};
 
@@ -61,7 +61,12 @@ impl VM {
             let class_id = self.new_class_id();
             class_ids.insert(class.name, class_id);
             for method in class.methods {
-                let body = method.body.resolve();
+                let mut resolver = Resolver {
+                    local_variables: std::iter::once("this".to_owned())
+                        .chain(method.parameters)
+                        .collect(),
+                };
+                let body = resolver.resolve_expression(method.body);
                 self.methods
                     .entry(Type::Object(class_id))
                     .or_insert_with(Default::default)
@@ -86,7 +91,7 @@ impl VM {
             class: main_type,
             properties: HashMap::default(),
         }));
-        self.invoke_method(&main_method, &this, &[]);
+        self.invoke_method(&main_method, this, Vec::new());
     }
 
     pub fn new_class_id(&mut self) -> ClassID {
@@ -109,12 +114,19 @@ impl VM {
     fn invoke_method(
         &mut self,
         method: &Method,
-        this: &Value,
-        arguments: &[Value],
+        this: Value,
+        arguments: Vec<Value>,
     ) -> Value {
         match method {
-            Method::Builtin(f) => f(self, this, arguments),
-            Method::Custom { body } => self.evaluate_expression(body),
+            Method::Builtin(f) => f(self, &this, &arguments),
+            Method::Custom { body } => {
+                let local_variable_count = self.local_variables.len();
+                self.local_variables.push(this);
+                self.local_variables.extend(arguments);
+                let result = self.evaluate_expression(body);
+                self.local_variables.truncate(local_variable_count);
+                result
+            }
         }
     }
 
@@ -138,8 +150,8 @@ impl VM {
                 let arguments = arguments
                     .iter()
                     .map(|argument| self.evaluate_expression(argument))
-                    .collect::<Vec<_>>();
-                self.invoke_method(&method, &this, &arguments)
+                    .collect();
+                self.invoke_method(&method, this, arguments)
             }
             Expression::LocalVariable {
                 name_or_de_brujin_index: index,

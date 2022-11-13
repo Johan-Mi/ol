@@ -3,6 +3,7 @@ mod method;
 mod object;
 mod parse;
 mod program;
+mod resolve;
 mod typ;
 mod value;
 mod vm;
