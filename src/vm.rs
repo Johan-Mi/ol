@@ -157,7 +157,7 @@ impl VM {
                 name_or_de_brujin_index: index,
             } => self
                 .local_variables
-                .get(self.local_variables.len() - 1 - *index as usize)
+                .get(self.local_variables.len() - 1 - *index)
                 .unwrap()
                 .clone(),
             Expression::LetIn {
