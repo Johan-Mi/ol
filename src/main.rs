@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 mod expression;
 mod method;
 mod object;
