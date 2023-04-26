@@ -107,7 +107,7 @@ fn i32_literal(input: Input) -> IResult<i32> {
         many1::<_, _, (), _, _>((digit1, take_while0('_'))),
     )
         .recognize()
-        .map(|s: Input| s.replace('_', "").parse().unwrap())
+        .map_res(|s: Input| s.replace('_', "").parse())
         .parse_next(input)
 }
 
