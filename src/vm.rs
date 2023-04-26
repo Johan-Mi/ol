@@ -1,6 +1,11 @@
 use crate::{
-    expression::Expression, method::Method, object::Object, program::Program,
-    resolve::Resolver, typ::Type, value::Value,
+    expression::Expression,
+    method::{default_methods, Method},
+    object::Object,
+    program::Program,
+    resolve::Resolver,
+    typ::Type,
+    value::Value,
 };
 use std::{collections::HashMap, rc::Rc};
 
@@ -16,37 +21,7 @@ pub struct ClassID(usize);
 impl VM {
     pub fn new() -> Self {
         Self {
-            methods: HashMap::from([(
-                Type::String,
-                HashMap::from([
-                    (
-                        "println".to_owned(),
-                        Rc::new(Method::Builtin(|_vm, this, _arguments| {
-                            let Value::String(this) = this else { todo!() };
-                            println!("{this}");
-                            Value::Unit
-                        })),
-                    ),
-                    (
-                        "concat".to_owned(),
-                        Rc::new(Method::Builtin(|_vm, this, arguments| {
-                            let Value::String(this) = this else { todo!() };
-                            Value::String(
-                                std::iter::once(&**this)
-                                    .chain(arguments.iter().map(|argument| {
-                                        match argument {
-                                            Value::String(argument) => {
-                                                &**argument
-                                            }
-                                            _ => todo!(),
-                                        }
-                                    }))
-                                    .collect::<String>(),
-                            )
-                        })),
-                    ),
-                ]),
-            )]),
+            methods: default_methods(),
             local_variables: Vec::new(),
             class_id_counter: 0,
         }
