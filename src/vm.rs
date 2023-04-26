@@ -7,6 +7,7 @@ use crate::{
     typ::Type,
     value::Value,
 };
+use anyhow::{Context, Result};
 use std::{collections::HashMap, rc::Rc};
 
 pub struct VM {
@@ -30,7 +31,7 @@ impl VM {
     pub fn load_program(
         &mut self,
         program: Program,
-    ) -> HashMap<String, ClassID> {
+    ) -> Result<HashMap<String, ClassID>> {
         let mut class_ids = HashMap::new();
         for class in program.classes {
             let class_id = self.new_class_id();
@@ -41,7 +42,7 @@ impl VM {
                         .chain(method.parameters)
                         .collect(),
                 };
-                let body = resolver.resolve_expression(method.body);
+                let body = resolver.resolve_expression(method.body)?;
                 self.methods
                     .entry(Type::Object(class_id))
                     .or_insert_with(Default::default)
@@ -51,22 +52,23 @@ impl VM {
                     );
             }
         }
-        class_ids
+        Ok(class_ids)
     }
 
-    pub fn run(&mut self, main_type: ClassID) {
+    pub fn run(&mut self, main_type: ClassID) -> Result<()> {
         let main_method = self
             .methods
             .get(&Type::Object(main_type))
-            .unwrap()
-            .get("main")
-            .unwrap()
+            .and_then(|methods| methods.get("main"))
+            .context("program has no entry point")?
             .clone();
         let this = Value::Object(Rc::new(Object {
             class: main_type,
             properties: HashMap::default(),
         }));
-        self.invoke_method(&main_method, this, Vec::new());
+        self.invoke_method(&main_method, this, Vec::new())?;
+
+        Ok(())
     }
 
     pub fn new_class_id(&mut self) -> ClassID {
@@ -79,9 +81,9 @@ impl VM {
         method: &Method,
         this: Value,
         arguments: Vec<Value>,
-    ) -> Value {
+    ) -> Result<Value> {
         match method {
-            Method::Builtin(f) => f(self, &this, &arguments),
+            Method::Builtin(f) => Ok(f(self, &this, &arguments)),
             Method::Custom { body } => {
                 let local_variable_count = self.local_variables.len();
                 self.local_variables.push(this);
@@ -93,44 +95,48 @@ impl VM {
         }
     }
 
-    fn evaluate_expression(&mut self, expression: &Expression) -> Value {
-        match expression {
+    fn evaluate_expression(
+        &mut self,
+        expression: &Expression,
+    ) -> Result<Value> {
+        Ok(match expression {
             Expression::Literal(value) => value.clone(),
             Expression::MethodCall {
                 name,
                 this,
                 arguments,
             } => {
-                let this = self.evaluate_expression(this);
+                let this = self.evaluate_expression(this)?;
                 let this_type = this.typ();
                 let method = self
                     .methods
                     .get(&this_type)
-                    .unwrap()
-                    .get(name)
-                    .unwrap()
+                    .and_then(|methods| methods.get(name))
+                    .context("type `{this_typ}` has no method named `{name}`")?
                     .clone();
                 let arguments = arguments
                     .iter()
                     .map(|argument| self.evaluate_expression(argument))
-                    .collect();
-                self.invoke_method(&method, this, arguments)
+                    .collect::<Result<_>>()?;
+                self.invoke_method(&method, this, arguments)?
             }
             Expression::LocalVariable {
                 name_or_de_brujin_index: index,
             } => self
                 .local_variables
                 .get(self.local_variables.len() - 1 - *index)
-                .unwrap()
+                .with_context(|| {
+                    format!("De Bruijn index {index} is out of range")
+                })?
                 .clone(),
             Expression::LetIn {
                 name: (),
                 bound,
                 body,
             } => {
-                let bound = self.evaluate_expression(bound);
+                let bound = self.evaluate_expression(bound)?;
                 self.local_variables.push(bound);
-                let result = self.evaluate_expression(body);
+                let result = self.evaluate_expression(body)?;
                 self.local_variables.pop();
                 result
             }
@@ -139,18 +145,20 @@ impl VM {
                 if_true,
                 if_false,
             } => {
-                let Value::Bool(condition) = self.evaluate_expression(condition) else { todo!() };
+                let Value::Bool(condition) = self.evaluate_expression(condition)? else { todo!() };
                 self.evaluate_expression(if condition {
                     if_true
                 } else {
                     if_false
-                })
+                })?
             }
-            Expression::Do(steps) => steps
-                .iter()
-                .map(|step| self.evaluate_expression(step))
-                .last()
-                .unwrap_or(Value::Unit),
-        }
+            Expression::Do(steps) => {
+                let mut res = Value::Unit;
+                for step in steps {
+                    res = self.evaluate_expression(step)?;
+                }
+                res
+            }
+        })
     }
 }

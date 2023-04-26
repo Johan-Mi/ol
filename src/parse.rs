@@ -21,10 +21,11 @@ type IResult<'a, T> = winnow::IResult<Input<'a>, T>;
 
 type Expression = ExpressionOf<String, String>;
 
-pub fn program(input: Input) -> IResult<Program> {
+pub fn program(input: Input) -> Result<Program, Error<String>> {
     delimited(ws, separated0(class, ws), ws)
         .map(|classes| Program { classes })
-        .parse_next(input)
+        .parse(input)
+        .map_err(Error::into_owned)
 }
 
 fn class(input: Input) -> IResult<Class> {

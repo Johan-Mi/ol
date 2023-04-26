@@ -1,4 +1,4 @@
-#![forbid(unsafe_code)]
+#![forbid(unsafe_code, clippy::unwrap_used)]
 #![warn(clippy::nursery, clippy::pedantic)]
 
 mod expression;
@@ -11,35 +11,22 @@ mod typ;
 mod value;
 mod vm;
 
-use std::process::ExitCode;
+use anyhow::{ensure, Context, Result};
 
-fn main() -> ExitCode {
-    match real_main() {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(()) => ExitCode::FAILURE,
-    }
-}
-
-fn real_main() -> Result<(), ()> {
+fn main() -> Result<()> {
     let mut args = std::env::args_os().skip(1);
-    if args.len() > 1 {
-        eprintln!("Error: too many command line arguments");
-        return Err(());
-    }
-    let source_path = args
-        .next()
-        .ok_or_else(|| eprintln!("Error: no file provided"))?;
+    ensure!(args.len() < 2, "too many command line arguments");
+    let source_path = args.next().context("no file provided")?;
     let source_code = std::fs::read_to_string(source_path)
-        .map_err(|err| eprintln!("Error: failed to read source file: {err}"))?;
-    let (_, program) = parse::program(&source_code)
-        .map_err(|err| eprintln!("Error: {err}"))?;
+        .context("failed to read source file")?;
+    let program = parse::program(&source_code).context("syntax error")?;
     let mut vm = vm::VM::new();
-    let class_ids = vm.load_program(program);
+    let class_ids = vm.load_program(program)?;
     vm.run(
         *class_ids
             .get("Main")
-            .ok_or_else(|| eprintln!("Error: program has no `Main` class"))?,
-    );
+            .context("program has no `Main` class")?,
+    )?;
 
     Ok(())
 }
