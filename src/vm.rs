@@ -74,18 +74,6 @@ impl VM {
         ClassID(self.class_id_counter)
     }
 
-    pub fn add_method(
-        &mut self,
-        this_type: Type,
-        name: String,
-        method: Rc<Method>,
-    ) {
-        self.methods
-            .entry(this_type)
-            .or_insert_with(Default::default)
-            .insert(name, method);
-    }
-
     fn invoke_method(
         &mut self,
         method: &Method,

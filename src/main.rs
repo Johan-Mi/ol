@@ -11,57 +11,35 @@ mod typ;
 mod value;
 mod vm;
 
-use expression::Expression;
-use method::Method;
-use std::rc::Rc;
-use typ::Type;
-use value::Value;
-use vm::VM;
+use std::process::ExitCode;
 
-fn main() {
-    let mut vm = VM::new();
-
-    if let Some(file) = std::env::args().nth(1) {
-        let file = std::fs::read_to_string(file).unwrap();
-        let program = parse::program(&file);
-        eprintln!("{program:#?}");
-        if let Ok((_, program)) = program {
-            let class_ids = vm.load_program(program);
-            vm.run(*class_ids.get("MyMainType").unwrap());
-        }
-    } else {
-        // class MyMainType {
-        //   def main =
-        //     let message = concat "Hello, " "world!"
-        //      in println message;
-        // }
-        let main_type = vm.new_class_id();
-        vm.add_method(
-            Type::Object(main_type),
-            "main".to_owned(),
-            Rc::new(Method::Custom {
-                body: Expression::LetIn {
-                    name: (),
-                    bound: Box::new(Expression::MethodCall {
-                        name: "concat".to_owned(),
-                        this: Box::new(Expression::Literal(Value::String(
-                            "Hello, ".to_owned(),
-                        ))),
-                        arguments: vec![Expression::Literal(Value::String(
-                            "world!".to_owned(),
-                        ))],
-                    }),
-                    body: Box::new(Expression::MethodCall {
-                        name: "println".to_owned(),
-                        this: Box::new(Expression::LocalVariable {
-                            name_or_de_brujin_index: 0,
-                        }),
-                        arguments: vec![],
-                    }),
-                },
-            }),
-        );
-
-        vm.run(main_type);
+fn main() -> ExitCode {
+    match real_main() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(()) => ExitCode::FAILURE,
     }
+}
+
+fn real_main() -> Result<(), ()> {
+    let mut args = std::env::args_os().skip(1);
+    if args.len() > 1 {
+        eprintln!("Error: too many command line arguments");
+        return Err(());
+    }
+    let source_path = args
+        .next()
+        .ok_or_else(|| eprintln!("Error: no file provided"))?;
+    let source_code = std::fs::read_to_string(source_path)
+        .map_err(|err| eprintln!("Error: failed to read source file: {err}"))?;
+    let (_, program) = parse::program(&source_code)
+        .map_err(|err| eprintln!("Error: {err}"))?;
+    let mut vm = vm::VM::new();
+    let class_ids = vm.load_program(program);
+    vm.run(
+        *class_ids
+            .get("Main")
+            .ok_or_else(|| eprintln!("Error: program has no `Main` class"))?,
+    );
+
+    Ok(())
 }

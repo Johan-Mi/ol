@@ -1,4 +1,4 @@
-use crate::{expression::Expression, value::Value, vm::VM, Type};
+use crate::{expression::Expression, typ::Type, value::Value, vm::VM};
 use std::{collections::HashMap, rc::Rc};
 
 type BuiltinMethod = fn(&mut VM, &Value, &[Value]) -> Value;
