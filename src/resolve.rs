@@ -25,9 +25,9 @@ impl Resolver {
                     .collect::<Result<_>>()?,
             },
             ExpressionOf::LocalVariable {
-                name_or_de_brujin_index: name,
+                name_or_de_bruijn_index: name,
             } => Expression::LocalVariable {
-                name_or_de_brujin_index: self
+                name_or_de_bruijn_index: self
                     .local_variables
                     .iter()
                     .rev()

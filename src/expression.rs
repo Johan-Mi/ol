@@ -11,7 +11,7 @@ pub enum ExpressionOf<NewVar, GetVar> {
         arguments: Vec<Self>,
     },
     LocalVariable {
-        name_or_de_brujin_index: GetVar,
+        name_or_de_bruijn_index: GetVar,
     },
     LetIn {
         name: NewVar,

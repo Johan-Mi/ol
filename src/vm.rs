@@ -121,7 +121,7 @@ impl VM {
                 self.invoke_method(&method, this, arguments)?
             }
             Expression::LocalVariable {
-                name_or_de_brujin_index: index,
+                name_or_de_bruijn_index: index,
             } => self
                 .local_variables
                 .get(self.local_variables.len() - 1 - *index)

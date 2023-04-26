@@ -74,7 +74,7 @@ fn expression_but_not_method_call(input: Input) -> IResult<Expression> {
         keyword("false").value(Expression::Literal(Value::Bool(false)));
 
     let local_variable = identifier.map(|ident| ExpressionOf::LocalVariable {
-        name_or_de_brujin_index: ident,
+        name_or_de_bruijn_index: ident,
     });
 
     alt((
