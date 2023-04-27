@@ -8,7 +8,7 @@ use winnow::{
     branch::alt,
     bytes::{one_of, tag, take_till0, take_till1, take_while0, take_while_m_n},
     character::{alpha1, alphanumeric1, digit1, multispace1},
-    combinator::{not, opt, peek},
+    combinator::{not, opt},
     error::Error,
     multi::{count, many0, many1, separated0},
     sequence::{delimited, preceded, terminated},
@@ -187,7 +187,7 @@ fn hex_digit(input: Input) -> IResult<char> {
 
 fn string_literal(input: Input) -> IResult<String> {
     let normal = take_till1("\"\\\n").map(Cow::Borrowed);
-    let null = terminated('0', not(peek(digit1))).value(Cow::Borrowed("\0"));
+    let null = terminated('0', not(digit1)).value(Cow::Borrowed("\0"));
     let character_escape_sequence = alt((
         '"'.value("\""),
         '\''.value("'"),
