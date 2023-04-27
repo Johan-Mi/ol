@@ -8,7 +8,7 @@ use crate::{
     value::Value,
 };
 use anyhow::{Context, Result};
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, fmt, rc::Rc};
 
 pub struct VM {
     methods: HashMap<Type, HashMap<String, Rc<Method>>>,
@@ -18,6 +18,12 @@ pub struct VM {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ClassID(usize);
+
+impl fmt::Display for ClassID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl VM {
     pub fn new() -> Self {
@@ -112,7 +118,11 @@ impl VM {
                     .methods
                     .get(&this_type)
                     .and_then(|methods| methods.get(name))
-                    .context("type `{this_typ}` has no method named `{name}`")?
+                    .with_context(|| {
+                        format!(
+                            "type `{this_type}` has no method named `{name}`"
+                        )
+                    })?
                     .clone();
                 let arguments = arguments
                     .iter()
