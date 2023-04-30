@@ -6,14 +6,13 @@ use crate::{
 use std::borrow::Cow;
 use winnow::{
     ascii::{alpha1, alphanumeric1, digit1, multispace1},
-    branch::alt,
-    bytes::{one_of, tag, take_till0, take_till1, take_while0},
-    combinator::{not, opt, repeat0, repeat1},
+    combinator::{
+        alt, count, delimited, not, opt, preceded, repeat0, repeat1,
+        separated0, terminated,
+    },
     error::Error,
-    multi::{count, separated0},
-    sequence::{delimited, preceded, terminated},
     stream::AsChar,
-    token::take_while,
+    token::{one_of, tag, take_till0, take_till1, take_while, take_while0},
     Parser,
 };
 
