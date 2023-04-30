@@ -5,14 +5,15 @@ use crate::{
 };
 use std::borrow::Cow;
 use winnow::{
+    ascii::{alpha1, alphanumeric1, digit1, multispace1},
     branch::alt,
-    bytes::{one_of, tag, take_till0, take_till1, take_while0, take_while_m_n},
-    character::{alpha1, alphanumeric1, digit1, multispace1},
-    combinator::{not, opt},
+    bytes::{one_of, tag, take_till0, take_till1, take_while0},
+    combinator::{not, opt, repeat0, repeat1},
     error::Error,
-    multi::{count, many0, many1, separated0},
+    multi::{count, separated0},
     sequence::{delimited, preceded, terminated},
     stream::AsChar,
+    token::take_while,
     Parser,
 };
 
@@ -33,7 +34,7 @@ fn class(input: Input) -> IResult<Class> {
         preceded((keyword("class"), ws), identifier),
         delimited(
             (ws, '{'),
-            many0(preceded(ws, class_method_definition)),
+            repeat0(preceded(ws, class_method_definition)),
             (ws, '}'),
         ),
     )
@@ -46,7 +47,7 @@ fn class_method_definition(input: Input) -> IResult<ClassMethod> {
         (keyword("def"), ws),
         (
             identifier,
-            many0(preceded(ws, identifier)),
+            repeat0(preceded(ws, identifier)),
             preceded((ws, '=', ws), expression),
         ),
         (ws, ';'),
@@ -105,10 +106,10 @@ fn block(input: Input) -> IResult<Expression> {
 fn i32_literal(input: Input) -> IResult<i32> {
     (
         opt(one_of("+-")),
-        many1::<_, _, (), _, _>((digit1, take_while0('_'))),
+        repeat1::<_, _, (), _, _>((digit1, take_while0('_'))),
     )
         .recognize()
-        .map_res(|s: Input| s.replace('_', "").parse())
+        .try_map(|s: Input| s.replace('_', "").parse())
         .parse_next(input)
 }
 
@@ -140,7 +141,7 @@ fn method_call(input: Input) -> IResult<Expression> {
     (
         identifier,
         preceded(ws, expression_but_not_method_call.map(Box::new)),
-        many0(preceded(ws, expression_but_not_method_call)),
+        repeat0(preceded(ws, expression_but_not_method_call)),
     )
         .map(|(name, this, arguments)| Expression::MethodCall {
             name,
@@ -153,7 +154,7 @@ fn method_call(input: Input) -> IResult<Expression> {
 fn identifier_or_keyword(input: Input) -> IResult<&str> {
     (
         alt((alpha1, "_")),
-        many0::<_, _, (), _, _>(alt((alphanumeric1, "_"))),
+        repeat0::<_, _, (), _, _>(alt((alphanumeric1, "_"))),
     )
         .recognize()
         .parse_next(input)
@@ -204,11 +205,8 @@ fn string_literal(input: Input) -> IResult<String> {
     let hex_escape_sequence =
         preceded('x', count::<_, _, (), _, _>(hex_digit, 2).recognize());
     let hex4digits = count::<_, _, (), _, _>(hex_digit, 4).recognize();
-    let bracketed_unicode = delimited(
-        '{',
-        take_while_m_n(1, 6, |c: char| c.is_ascii_hexdigit()),
-        '}',
-    );
+    let bracketed_unicode =
+        delimited('{', take_while(1..=6, |c: char| c.is_ascii_hexdigit()), '}');
     let unicode_escape_sequence =
         preceded('u', alt((hex4digits, bracketed_unicode)));
     let escape_sequence = preceded(
@@ -217,7 +215,7 @@ fn string_literal(input: Input) -> IResult<String> {
             character_escape_sequence,
             null,
             alt((hex_escape_sequence, unicode_escape_sequence))
-                .map_res(|digits| u32::from_str_radix(digits, 16))
+                .try_map(|digits| u32::from_str_radix(digits, 16))
                 .verify_map(|c| {
                     char::from_u32(c).map(String::from).map(Cow::Owned)
                 }),
@@ -225,7 +223,7 @@ fn string_literal(input: Input) -> IResult<String> {
     );
     let string_char = alt((normal, escape_sequence));
 
-    delimited('"', many0(string_char), '"')
+    delimited('"', repeat0(string_char), '"')
         .map(|strs: Vec<_>| strs.concat())
         .parse_next(input)
 }
@@ -237,5 +235,5 @@ fn eol_comment(input: Input) -> IResult<()> {
 }
 
 fn ws(input: Input) -> IResult<()> {
-    many0(alt((multispace1.void(), eol_comment))).parse_next(input)
+    repeat0(alt((multispace1.void(), eol_comment))).parse_next(input)
 }
