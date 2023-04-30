@@ -12,7 +12,7 @@ use winnow::{
     },
     error::Error,
     stream::AsChar,
-    token::{one_of, tag, take_till0, take_till1, take_while, take_while0},
+    token::{one_of, take_till0, take_till1, take_while, take_while0},
     Parser,
 };
 
@@ -228,9 +228,7 @@ fn string_literal(input: Input) -> IResult<String> {
 }
 
 fn eol_comment(input: Input) -> IResult<()> {
-    (tag("//"), take_till0('\n').void())
-        .void()
-        .parse_next(input)
+    ("//", take_till0('\n').void()).void().parse_next(input)
 }
 
 fn ws(input: Input) -> IResult<()> {
