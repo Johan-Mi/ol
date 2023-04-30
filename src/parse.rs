@@ -228,7 +228,7 @@ fn string_literal(input: Input) -> IResult<String> {
 }
 
 fn eol_comment(input: Input) -> IResult<()> {
-    (tag("//"), take_till0("\n\r").void())
+    (tag("//"), take_till0('\n').void())
         .void()
         .parse_next(input)
 }
