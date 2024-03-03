@@ -51,7 +51,7 @@ impl VM {
                 let body = resolver.resolve_expression(method.body)?;
                 self.methods
                     .entry(Type::Object(class_id))
-                    .or_insert_with(Default::default)
+                    .or_default()
                     .insert(
                         method.name.clone(),
                         Rc::new(Method::Custom { body }),
