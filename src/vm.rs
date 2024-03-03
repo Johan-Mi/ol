@@ -155,7 +155,11 @@ impl VM {
                 if_true,
                 if_false,
             } => {
-                let Value::Bool(condition) = self.evaluate_expression(condition)? else { todo!() };
+                let Value::Bool(condition) =
+                    self.evaluate_expression(condition)?
+                else {
+                    todo!()
+                };
                 self.evaluate_expression(if condition {
                     if_true
                 } else {
