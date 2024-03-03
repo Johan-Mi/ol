@@ -1,4 +1,4 @@
-use crate::expression::{Expression, ExpressionOf};
+use crate::expression::{self, Expression};
 use anyhow::{anyhow, Result};
 
 pub struct Resolver {
@@ -8,15 +8,15 @@ pub struct Resolver {
 impl Resolver {
     pub fn resolve_expression(
         &mut self,
-        expression: ExpressionOf<String, String>,
+        expression: expression::Of<String, String>,
     ) -> Result<Expression> {
         Ok(match expression {
-            ExpressionOf::Literal(value) => Expression::Literal(value),
-            ExpressionOf::MethodCall {
+            expression::Of::Literal(value) => expression::Of::Literal(value),
+            expression::Of::MethodCall {
                 name,
                 this,
                 arguments,
-            } => ExpressionOf::MethodCall {
+            } => expression::Of::MethodCall {
                 name,
                 this: Box::new(self.resolve_expression(*this)?),
                 arguments: arguments
@@ -24,9 +24,9 @@ impl Resolver {
                     .map(|argument| self.resolve_expression(argument))
                     .collect::<Result<_>>()?,
             },
-            ExpressionOf::LocalVariable {
+            expression::Of::LocalVariable {
                 name_or_de_bruijn_index: name,
-            } => Expression::LocalVariable {
+            } => expression::Of::LocalVariable {
                 name_or_de_bruijn_index: self
                     .local_variables
                     .iter()
@@ -36,9 +36,9 @@ impl Resolver {
                         anyhow!("variable `{name}` is not defined")
                     })?,
             },
-            ExpressionOf::LetIn { name, bound, body } => {
+            expression::Of::LetIn { name, bound, body } => {
                 self.local_variables.push(name);
-                let result = Expression::LetIn {
+                let result = expression::Of::LetIn {
                     name: (),
                     bound: Box::new(self.resolve_expression(*bound)?),
                     body: Box::new(self.resolve_expression(*body)?),
@@ -46,16 +46,16 @@ impl Resolver {
                 self.local_variables.pop();
                 result
             }
-            ExpressionOf::IfThenElse {
+            expression::Of::IfThenElse {
                 condition,
                 if_true,
                 if_false,
-            } => Expression::IfThenElse {
+            } => expression::Of::IfThenElse {
                 condition: Box::new(self.resolve_expression(*condition)?),
                 if_true: Box::new(self.resolve_expression(*if_true)?),
                 if_false: Box::new(self.resolve_expression(*if_false)?),
             },
-            ExpressionOf::Do(steps) => Expression::Do(
+            expression::Of::Do(steps) => expression::Of::Do(
                 steps
                     .into_iter()
                     .map(|step| self.resolve_expression(step))

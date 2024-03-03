@@ -1,5 +1,4 @@
 use crate::{
-    expression::ExpressionOf,
     program::{Class, ClassMethod, Program},
     value::Value,
 };
@@ -19,7 +18,7 @@ use winnow::{
 type Input<'a> = &'a str;
 type IResult<'a, T> = winnow::IResult<Input<'a>, T>;
 
-type Expression = ExpressionOf<String, String>;
+type Expression = crate::expression::Of<String, String>;
 
 pub fn program(input: Input) -> Result<Program, Error<String>> {
     delimited(ws, separated0(class, ws), ws)
@@ -73,7 +72,7 @@ fn expression_but_not_method_call(input: Input) -> IResult<Expression> {
     let r#false =
         keyword("false").value(Expression::Literal(Value::Bool(false)));
 
-    let local_variable = identifier.map(|ident| ExpressionOf::LocalVariable {
+    let local_variable = identifier.map(|ident| Expression::LocalVariable {
         name_or_de_bruijn_index: ident,
     });
 

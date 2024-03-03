@@ -1,5 +1,3 @@
-use crate::expression::ExpressionOf;
-
 #[derive(Debug)]
 pub struct Program {
     pub classes: Vec<Class>,
@@ -15,5 +13,5 @@ pub struct Class {
 pub struct ClassMethod {
     pub name: String,
     pub parameters: Vec<String>,
-    pub body: ExpressionOf<String, String>,
+    pub body: crate::expression::Of<String, String>,
 }

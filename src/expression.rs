@@ -1,9 +1,9 @@
 use crate::value::Value;
 
-pub type Expression = ExpressionOf<(), usize>;
+pub type Expression = Of<(), usize>;
 
 #[derive(Debug, Clone)]
-pub enum ExpressionOf<NewVar, GetVar> {
+pub enum Of<NewVar, GetVar> {
     Literal(Value),
     MethodCall {
         name: String,
